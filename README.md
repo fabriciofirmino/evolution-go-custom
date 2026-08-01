@@ -17,15 +17,17 @@
 
 ## ⚡ Instale em um comando
 
-Em um **Ubuntu Server / VPS** novo (como root):
+Em um **Ubuntu Server / VPS** novo ou com uma instalação anterior (como root):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NathanAshford/evolution-go-custom/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/fabriciofirmino/evolution-go-custom/main/install-fabricio.sh | sudo bash
 ```
 
-Só isso. O instalador configura o Docker, compila a aplicação a partir do código-fonte,
-gera segredos fortes e sobe tudo — e no final imprime a **URL do Manager** e a sua **API key**.
-Sem Coolify, sem painel de controle, sem contas externas. [Detalhes abaixo.](#-instalação)
+O instalador força o checkout a usar este fork, atualiza instalações existentes em
+`/opt/evolution-go`, configura o Docker, compila a aplicação a partir do código-fonte,
+gera segredos fortes e sobe toda a stack. No final, imprime a **URL do Manager** e a
+sua **API key**. Sem Coolify, sem painel de controle e sem contas externas.
+[Detalhes abaixo.](#-instalação)
 
 ---
 
@@ -198,29 +200,53 @@ ambiente (`PROXY_PROTOCOL`, `PROXY_HOST`, `PROXY_PORT`, `PROXY_USERNAME`, `PROXY
 
 ## 🚀 Instalação
 
-### Um comando (recomendado)
+### Um comando — instalação nova ou atualização
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NathanAshford/evolution-go-custom/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/fabriciofirmino/evolution-go-custom/main/install-fabricio.sh | sudo bash
 ```
 
-O instalador é **100% autônomo** — você roda e já sai usando. Ele:
+O `install-fabricio.sh` é o ponto de entrada recomendado. Ele:
 
-1. Cria **swap automaticamente** se a RAM for baixa (evita travar o build em VPS de 1 GB)
-2. Instala **Docker Engine + Compose** se não existirem
-3. Clona este repositório em `/opt/evolution-go`
-4. Gera uma **API key** e uma **senha de banco** aleatórias e fortes
-5. **Compila a imagem a partir do código-fonte** e sobe a stack completa
-6. **Abre a porta da app (e o SSH)** no firewall, se houver um ativo
-7. Imprime a **URL do Manager** e a sua **API key**, com um comando pronto pra criar sua 1ª instância
+1. Força o remoto Git para `fabriciofirmino/evolution-go-custom`
+2. Atualiza uma instalação existente em `/opt/evolution-go`
+3. Preserva o arquivo `deploy/.env` com as credenciais atuais
+4. Cria **swap automaticamente** se a RAM for baixa
+5. Instala **Docker Engine + Compose** se não existirem
+6. Gera uma **API key** e uma **senha de banco** na primeira instalação
+7. Compila a imagem corrigida e sobe a stack completa
+8. Abre a porta da aplicação no firewall, quando aplicável
+9. Imprime a **URL do Manager** e a **API key**
+
+### Atualizar uma instalação existente
+
+Use o mesmo comando. O instalador detecta o checkout existente, corrige o `origin`,
+baixa a branch `main` deste fork e executa o instalador principal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fabriciofirmino/evolution-go-custom/main/install-fabricio.sh | sudo bash
+```
+
+Para confirmar o repositório utilizado:
+
+```bash
+git -C /opt/evolution-go remote get-url origin
+git -C /opt/evolution-go rev-parse --short HEAD
+```
+
+O remoto esperado é:
+
+```text
+https://github.com/fabriciofirmino/evolution-go-custom.git
+```
 
 ### Opções
 
-Coloque variáveis de ambiente antes do comando para personalizar:
+Coloque variáveis de ambiente antes do `bash` para personalizar:
 
 ```bash
-# Porta customizada + firewall automático (UFW: libera SSH e a porta da app)
-curl -fsSL https://raw.githubusercontent.com/NathanAshford/evolution-go-custom/main/install.sh \
+# Porta customizada + firewall automático
+curl -fsSL https://raw.githubusercontent.com/fabriciofirmino/evolution-go-custom/main/install-fabricio.sh \
   | sudo APP_PORT=4000 SETUP_UFW=1 bash
 ```
 
@@ -229,16 +255,19 @@ curl -fsSL https://raw.githubusercontent.com/NathanAshford/evolution-go-custom/m
 | `APP_PORT` | Porta em que a API/Manager escuta | `8080` |
 | `INSTALL_DIR` | Local de instalação | `/opt/evolution-go` |
 | `EVO_BRANCH` | Branch a implantar | `main` |
-| `SETUP_UFW` | Habilitar o UFW se estiver inativo (sempre libera a porta se já houver firewall ativo) | `0` |
+| `REPO_URL` | Repositório Git utilizado pelo instalador | este fork |
+| `SETUP_UFW` | Habilitar o UFW se estiver inativo | `0` |
 | `CREATE_SWAP` | Criar swap automaticamente em VPS de pouca RAM (`0` para desligar) | `auto` |
 | `SWAP_SIZE` | Tamanho do swap criado | `2G` |
 
-### Instalação manual (inspecionar antes)
+### Instalação manual — inspecionar antes
 
 ```bash
-git clone https://github.com/NathanAshford/evolution-go-custom.git
+git clone https://github.com/fabriciofirmino/evolution-go-custom.git
 cd evolution-go-custom
-sudo ./install.sh
+sudo REPO_URL=https://github.com/fabriciofirmino/evolution-go-custom.git \
+  INSTALL_DIR="$PWD" \
+  bash ./install-fabricio.sh
 ```
 
 ### Gerenciando a stack
@@ -253,9 +282,8 @@ docker compose up -d --build # atualizar após um git pull
 ```
 
 > **Requisitos:** uma VPS Ubuntu 20.04+/Debian 11+ 64-bit. A primeira compilação
-> (do binário Go) usa ~2 GB de RAM — em VPS de 1 GB o instalador **cria swap
-> automaticamente** para não travar. O painel (Manager) já vem pré-compilado, então
-> o build é mais leve. Depois, o consumo de memória em execução é baixo.
+> do binário Go pode usar cerca de 2 GB de memória. Em VPS com pouca RAM, o
+> instalador cria swap automaticamente. O Manager já vem pré-compilado.
 
 Quando estiver no ar, abra a **interface do Manager** em `http://SEU_IP:8080/manager` e a
 **referência interativa da API (Swagger)** em `http://SEU_IP:8080/swagger/index.html`.
